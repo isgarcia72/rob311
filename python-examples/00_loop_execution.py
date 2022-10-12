@@ -11,7 +11,8 @@ if __name__ == "__main__":
 
     # Print "ROB311 @UM-ROBOTICS" for 5 seconds @200Hz
 
-    # YOUR
-    # CODE 
-    # GOES 
-    # HERE
+    while time.time()<(start+EXEC_TIME):
+        goaltime = time.time()+DT
+        while time.time()<goaltime:
+            pass
+        print("ROB311 @UM-ROBOTICS")
