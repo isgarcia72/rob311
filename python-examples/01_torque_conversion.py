@@ -35,11 +35,11 @@ def compute_motor_torques(Tx, Ty, alpha):
     T3: Motor Torque 3
 
     '''
-    T1=(1/3)*(-(2*Ty)/cos(alpha))
-    T2=(1/3)*((1/cos(alpha))*((-np.sqrt(3)*Tx)+Ty))
-    T2=(1/3)*((1/cos(alpha))*((np.sqrt(3)*Tx)+Ty))
+    T1=(1/3)*(-(2*Ty)/np.cos(alpha))
+    T2=(1/3)*((1/np.cos(alpha))*((-np.sqrt(3)*Tx)+Ty))
+    T3=(1/3)*((1/np.cos(alpha))*((np.sqrt(3)*Tx)+Ty))
 
-    return 0, 0, 0
+    return T1, T2, T3
 
 if __name__ == "__main__":
     start = time.time()
@@ -62,6 +62,10 @@ if __name__ == "__main__":
         T1_array.append(T1)
         T2_array.append(T2)
         T3_array.append(T3)
+
+        print("T1: ", T1, ", T2: ", T2, ", T3: ", T3)
+        time.sleep(DT)
+        t = t + DT
     
     bigArray = [T1_array,T2_array,T3_array]
     # Save your arrays as a .csv file
