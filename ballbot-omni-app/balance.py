@@ -212,8 +212,13 @@ if __name__ == "__main__":
         d_dphi_err_y = dphi_err_y - dphi_err_y_old
         
         # compute PID torque inputs
+<<<<<<< HEAD
         Tx_dphi = KP_DPHI_X * dphi_err_x + KD_DPHI_X * d_dphi_err_x
         Ty_dphi = KP_DPHI_Y * dphi_err_y + KD_DPHI_Y * d_dphi_err_y
+=======
+        Tx = KP_DPHI_X * dphi_err_x + KD_DPHI_X * d_dphi_err_x
+        Ty = KP_DPHI_Y * dphi_err_y + KD_DPHI_Y * d_dphi_err_y
+>>>>>>> f678940d8d14b597afb673589c533e04bb1b0d2c
 
         # LEAN ANGLE (THETA) PID
         # capture and filter theta
