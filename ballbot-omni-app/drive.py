@@ -17,8 +17,9 @@ import FIR as fir
 from MBot.Messages.message_defs import mo_states_dtype, mo_cmds_dtype, mo_pid_params_dtype
 from MBot.SerialProtocol.protocol import SerialProtocol
 from realtime_loop import SoftRealtimeLoop, LoopKiller
+from slew_filter import SlewFilter
 
-# CUTJIG PS4 CONTROLLER MAC ADDRESS: 98:B6:E9:D7:1E:25
+# CUTJIG PS4 CONTROLLER MAC ADDRESS: 98:B6:E9:D7:1E:25 
 
 def register_topics(ser_dev:SerialProtocol):
     ser_dev.serializer_dict[101] = [lambda bytes: np.frombuffer(bytes, dtype=mo_cmds_dtype), lambda data: data.tobytes()]
@@ -86,6 +87,18 @@ def compute_motor_torques(Tx, Ty, Tz):
     T1 = (-0.3333) * (Tz - (2.8284 * Ty))
     T2 = (-0.3333) * (Tz + (1.4142 * (Ty + 1.7320 * Tx)))
     T3 = (-0.3333) * (Tz + (1.4142 * (Ty - 1.7320 * Tx)))
+    if T1 > 1.0:
+        T1 = 1.0
+    elif T1 < -1.0:
+        T1 = -1.0
+    if T2 > 1.0:
+        T2 = 1.0
+    elif T2 < -1.0:
+        T2 = -1.0
+    if T3 > 1.0:
+        T3 = 1.0
+    elif T3 < -1.0:
+        T3 = -1.0
     return T1, T2, T3
 
 
@@ -108,12 +121,12 @@ lowpass_filter_dphi_y.lowpass(N, Fn_dphi)
 
 # SETTING UP THETA FILTERING AND PID
 # controller gains
-KP_THETA_X = 8.5
-KP_THETA_Y = 8.5
-KI_THETA_X = 0.0
-KI_THETA_Y = 0.0
-KD_THETA_X = 0.04
-KD_THETA_Y = 0.04
+KP_THETA_X = 7.0
+KP_THETA_Y = 7.0
+KI_THETA_X = 0.09
+KI_THETA_Y = 0.09
+KD_THETA_X = 0.13
+KD_THETA_Y = 0.13
 
 # parameters for lowpass filter for dtheta
 Fc_dtheta = 1.0 # cut-off frequency of the filter in Hz
@@ -122,6 +135,13 @@ lowpass_filter_dtheta_x = fir.FIR()
 lowpass_filter_dtheta_x.lowpass(N, Fn_dtheta)
 lowpass_filter_dtheta_y = fir.FIR()
 lowpass_filter_dtheta_y.lowpass(N, Fn_dtheta)
+
+# Fc_ctrl = 0.5 # cut-off frequency of the filter in Hz
+# Fn_ctrl = Fc_ctrl/Fs
+# lowpass_filter_ctrl_x = fir.FIR()
+# lowpass_filter_ctrl_x.lowpass(N, Fn_ctrl)
+# lowpass_filter_ctrl_y = fir.FIR()
+# lowpass_filter_ctrl_y.lowpass(N, Fn_ctrl)
 
 # parameters for wma filter for theta
 WMA_WEIGHTS = np.array([0.1, 0.3, 0.4, 0.8])
@@ -175,6 +195,9 @@ if __name__ == "__main__":
         theta_x_window.append(0.0)
         theta_y_window.append(0.0)
 
+    # innitialize slew filter for bt_controller Lx and Ly
+    lx_filter = SlewFilter(200, 2, 0)
+    ly_filter = SlewFilter(200, 2, 0)
 
     # EXECUTING CONTROL LOOP
     # Time for comms to sync
@@ -222,11 +245,15 @@ if __name__ == "__main__":
         theta_x = wma_filter(theta_x_window)
         theta_y = wma_filter(theta_y_window)
 
+        # filter lx and ly inputs
+        lx_temp = lx_filter.filter(bt_controller.Lx)
+        ly_temp = ly_filter.filter(bt_controller.Ly)
+
         # compute theta PID errors
         theta_err_x_old = theta_err_x
         theta_err_y_old = theta_err_y
-        theta_err_x = theta_x - bt_controller.Ly*0.05 - bt_controller.up_down*0.002 # positive bias causes -y direction movement
-        theta_err_y = theta_y - bt_controller.Lx*(-0.05) - bt_controller.right_left*(-0.002) # positive bias causes -x direction movement
+        theta_err_x = theta_x - ly_temp*0.04 - bt_controller.up_down*0.005 # positive bias causes -y direction movement
+        theta_err_y = theta_y - lx_temp*(-0.04) - bt_controller.right_left*(-0.005) # positive bias causes -x direction movement
         d_theta_err_x = theta_err_x - theta_err_x_old
         d_theta_err_y = theta_err_y - theta_err_y_old
         d_theta_err_x = lowpass_filter_dtheta_x.filter(d_theta_err_x)
@@ -238,7 +265,7 @@ if __name__ == "__main__":
         # compute xyz torques from theta PID and BT controller and convert to 123 torques
         Tx = KP_THETA_X * theta_err_x + KD_THETA_X * d_theta_err_x + KI_THETA_X * i_theta_err_x #+ Tx_dphi
         Ty = KP_THETA_Y * theta_err_y + KD_THETA_Y * d_theta_err_y + KI_THETA_Y * i_theta_err_y #+ Ty_dphi 
-        Tz = -bt_controller.Rx * 0.5
+        Tz = -bt_controller.Rx * 2.8
         T1, T2, T3 = compute_motor_torques(Tx, Ty, Tz)
 
         # handle torque saturation
@@ -248,7 +275,7 @@ if __name__ == "__main__":
             Ty = np.sign(Ty) * MAX_PLANAR_DUTY
 
         # construct data matrix for recording values from this iteration
-        data = [i, t_now, theta_x, theta_y]
+        data = [i, t_now, states["psi_1"], states["psi_2"], states["psi_3"], dphi_z]
         dl.appendData(data)
 
         # print values from this iteration to terminal

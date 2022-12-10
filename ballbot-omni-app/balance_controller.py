@@ -10,6 +10,8 @@ Behavior:
 - adjusts Ly attribute with left thubmstick (L3). [down, up] = [-1, 1]
 - adjusts Rx attribute with right thumbstick (R3). [left, right] = [-1, 1]
 - adjusts Ry attribute with right thubmstick (R3). [down, up] = [-1, 1]
+- increments up_down attribute with up and down arrows. [up, down] = [+1, -1]
+- increments right_left attribute with right and left arrows. [right, left] = [+1, -1]
 - exits messaging thread on options press
 '''
 class BalanceController(Controller):
@@ -22,6 +24,8 @@ class BalanceController(Controller):
         self.Ly = 0.0
         self.Rx = 0.0
         self.Ry = 0.0
+        self.up_down = 0.0
+        self.right_left = 0.0
 
     # LEFT THUMBSTICK BEHAVIOR
     def on_L3_right(self, value):
@@ -72,6 +76,23 @@ class BalanceController(Controller):
     def on_R3_y_at_rest(self):
         # zeroed center
         self.Ry = 0.0
+
+    # ARROW PAD BEHAVIOR
+    def on_up_arrow_press(self):
+        # increase up_down
+        self.up_down += 1
+
+    def on_down_arrow_press(self):
+        # decrease up_down
+        self.up_down -= 1
+
+    def on_right_arrow_press(self):
+        # increase right_left
+        self.right_left += 1
+
+    def on_left_arrow_press(self):
+        # decrease right_left
+        self.right_left -= 1
 
     # OPTIONS BEHAVIOR
     def on_options_press(self):

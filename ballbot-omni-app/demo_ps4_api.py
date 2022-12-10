@@ -260,6 +260,12 @@ class ROB311BTController(Controller):
     def on_L1_release(self):
         pass
 
+    def on_down_arrow_press(self):
+        self.tz_demo_3 -= 1
+
+    def on_up_arrow_press(self):
+        self.tz_demo_3 += 1
+
     # ----------------------------------------
 
     def on_options_press(self):
